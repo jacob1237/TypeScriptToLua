@@ -317,6 +317,49 @@ test("unicode export default class", () => {
         .expectToEqual({ result: "你好" });
 });
 
+test("escape characters", () => {
+    const luaTarget = LuaTarget.Lua53;
+
+    // const transform = UnicodeTransformer(luaTarget);
+    // const errors: ts.Diagnostic[] = [];
+
+    // expect(transform("Hello world: \\x15\\x25\\xff test", errors))
+    //     .toBe("Hello world: \\21\\37\\255 test");
+
+    // expect(transform("Hello wor\\\\ld: test", errors))
+    //     .toBe("Hello wor\\\\ld: test");
+
+    // expect(transform("Hello \\uAB12 \\u{A233123}\\xff blabla", errors))
+    //     .toBe("Hello \\u{AB12} \\u{A233123}\\255 blabla");
+
+    // util
+    //     .testFunction("return 'Hello \\uAB12 \\u{10A35F}\\xff blabla'")
+    //     .setOptions({ luaTarget })
+    //     .expectToEqual("Hello \\u{AB12} \\u{10A35F}\\255 blabla");
+
+    // util
+    //     .testFunction(`return '🙂️'`)
+    //     .setOptions({ luaTarget })
+    //     .expectToEqual("Hello \\u{AB12} \\u{10A35F}\\255 blabla");
+
+    util
+        .testFunction(`return 'Hello world: \u{1F642}t'`)
+        .setOptions({ luaTarget })
+        .expectToEqual("Hello world: \u{1F642}t");
+
+    // util.testFunction("return 'Hello \\uAB12 \\u{103AB}\\xff blabla'")
+    //     .setOptions({ luaTarget })
+    //     .expectToEqual("Hello \\u{AB12} \\u{103AB}\\xff blabla");
+
+    // util.testFunction`
+    //         const a = 1;
+    //         return \`Hello \\uAB12 \${a + 3} \\u{103AB}\\xff\`
+    //     `
+    //     .setOptions({ luaTarget })
+    //     .debug()
+    //     .expectToEqual("Hello ꬒ 4 𐎫�");
+});
+
 describe("lua keyword as identifier doesn't interfere with lua's value", () => {
     test("variable (nil)", () => {
         util.testFunction`

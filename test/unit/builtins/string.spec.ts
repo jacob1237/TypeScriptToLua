@@ -344,20 +344,20 @@ test.each([
 });
 
 const trimTestCases = [
-    "",
-    " ",
-    "\t",
-    "\t \t",
-    " foo ",
-    "\tfoo\t",
-    "\ffoo\f",
-    "\vfoo\v",
-    "\uFEFFFoo\uFEFF",
-    "\xA0Foo\xA0",
-    " \t foo \t ",
-    " foo    bar ",
-    "\r\nfoo\n\r\n",
-    "\r\nfoo\nbar\n\r\n",
+    String.raw``,
+    String.raw` `,
+    String.raw`\t`,
+    String.raw`\t \t`,
+    String.raw` foo `,
+    String.raw`\tfoo\t`,
+    String.raw`\ffoo\f`,
+    String.raw`\vfoo\v`,
+    String.raw`\uFEFFFoo\uFEFF`,
+    String.raw`\xA0Foo\xA0`,
+    String.raw` \t foo \t `,
+    String.raw` foo    bar `,
+    String.raw`\r\nfoo\n\r\n`,
+    String.raw`\r\nfoo\nbar\n\r\n`,
 ];
 describe.each(["trim", "trimEnd", "trimRight", "trimStart", "trimLeft"])("string.%s", trim => {
     test.each(trimTestCases)("matches JS result (%p)", testString => {
