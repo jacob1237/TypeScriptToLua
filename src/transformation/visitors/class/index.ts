@@ -11,23 +11,16 @@ import {
 import { createSelfIdentifier } from "../../utils/lua-ast";
 import { createSafeName, isUnsafeName } from "../../utils/safe-names";
 import { transformIdentifier } from "../identifier";
-import { createDecoratingExpression, transformDecoratorExpression } from "./decorators";
+import { createClassDecoratingExpression, createConstructorDecoratingExpression } from "./decorators";
 import { transformAccessorDeclarations } from "./members/accessors";
 import { createConstructorName, transformConstructorDeclaration } from "./members/constructor";
-import {
-    createPropertyDecoratingExpression,
-    transformClassInstanceFields,
-    transformStaticPropertyDeclaration,
-} from "./members/fields";
-import {
-    createConstructorDecoratingExpression,
-    createMethodDecoratingExpression,
-    transformMethodDeclaration,
-} from "./members/method";
+import { transformClassInstanceFields, transformStaticPropertyDeclaration } from "./members/fields";
+import { transformMethodDeclaration } from "./members/method";
 import { getExtendedNode, getExtendedType, isStaticNode } from "./utils";
 import { createClassSetup } from "./setup";
 import { LuaTarget } from "../../../CompilerOptions";
 import { transformInPrecedingStatementScope } from "../../utils/preceding-statements";
+import { createClassPropertyDecoratingExpression } from "./decorators";
 
 export const transformClassDeclaration: FunctionVisitor<ts.ClassLikeDeclaration> = (declaration, context) => {
     // If declaration is a default export, transform to export variable assignment instead
@@ -121,6 +114,7 @@ function transformClassLikeDeclaration(
 
         if (constructorResult) result.push(constructorResult);
 
+        // Legacy constructor decorator
         const decoratingExpression = createConstructorDecoratingExpression(context, constructor, localClassName);
         if (decoratingExpression) result.push(decoratingExpression);
     } else if (!extendedType) {
@@ -165,51 +159,55 @@ function transformClassLikeDeclaration(
         );
     }
 
-    // Transform accessors
-    for (const member of classDeclaration.members) {
-        if (!ts.isAccessor(member)) continue;
-        const accessors = context.resolver.getAllAccessorDeclarations(member);
-        if (accessors.firstAccessor !== member) continue;
+    // Transform class members
 
-        const accessorsResult = transformAccessorDeclarations(context, accessors, localClassName);
-        if (accessorsResult) {
-            result.push(accessorsResult);
+    // First transform the methods, in case the static properties call them
+    for (const member of classDeclaration.members) {
+        if (ts.isMethodDeclaration(member)) {
+            // Methods
+            const statements = transformMethodDeclaration(context, member, localClassName);
+            result.push(...statements);
         }
     }
 
-    const decorationStatements: lua.Statement[] = [];
-
+    // Then transform the rest
     for (const member of classDeclaration.members) {
         if (ts.isAccessor(member)) {
-            const expression = createPropertyDecoratingExpression(context, member, localClassName);
-            if (expression) decorationStatements.push(lua.createExpressionStatement(expression));
-        } else if (ts.isMethodDeclaration(member)) {
-            const statement = transformMethodDeclaration(context, member, localClassName);
-            if (statement) result.push(statement);
-            if (member.body) {
-                const statement = createMethodDecoratingExpression(context, member, localClassName);
-                if (statement) decorationStatements.push(statement);
+            // Accessors
+            const accessors = context.resolver.getAllAccessorDeclarations(member);
+            if (accessors.firstAccessor !== member) continue;
+
+            const accessorsResult = transformAccessorDeclarations(context, accessors, localClassName);
+            if (accessorsResult) {
+                result.push(accessorsResult);
             }
         } else if (ts.isPropertyDeclaration(member)) {
+            // Properties
             if (isStaticNode(member)) {
                 const statement = transformStaticPropertyDeclaration(context, member, localClassName);
-                if (statement) decorationStatements.push(statement);
+                if (statement) result.push(statement);
             }
-            const expression = createPropertyDecoratingExpression(context, member, localClassName);
-            if (expression) decorationStatements.push(lua.createExpressionStatement(expression));
+
+            if (ts.getDecorators(member)?.length) {
+                result.push(
+                    lua.createExpressionStatement(createClassPropertyDecoratingExpression(context, member, className))
+                );
+            }
+        } else if (ts.isClassStaticBlockDeclaration(member)) {
+            if (member.body.statements.length > 0) {
+                const bodyStatements = context.transformStatements(member.body.statements);
+                const iif = lua.createFunctionExpression(lua.createBlock(bodyStatements), [
+                    lua.createIdentifier("self"),
+                ]);
+                const iife = lua.createCallExpression(iif, [className]);
+                result.push(lua.createExpressionStatement(iife, member));
+            }
         }
     }
-
-    result.push(...decorationStatements);
 
     // Decorate the class
     if (ts.canHaveDecorators(classDeclaration) && ts.getDecorators(classDeclaration)) {
-        const decoratingExpression = createDecoratingExpression(
-            context,
-            classDeclaration.kind,
-            ts.getDecorators(classDeclaration)?.map(d => transformDecoratorExpression(context, d)) ?? [],
-            localClassName
-        );
+        const decoratingExpression = createClassDecoratingExpression(context, classDeclaration, localClassName);
         const decoratingStatement = lua.createAssignmentStatement(localClassName, decoratingExpression);
         result.push(decoratingStatement);
 
