@@ -7,6 +7,7 @@ import { loadImportedLualibFeatures, loadInlineLualibFeatures, LuaLibFeature } f
 import { isValidLuaIdentifier, shouldAllowUnicode } from "./transformation/utils/safe-names";
 import { EmitHost, getEmitPath } from "./transpilation";
 import { intersperse, normalizeSlashes } from "./utils";
+import { encodeUTF8 } from "./transformation/utils/utf8";
 
 // https://www.lua.org/pil/2.4.html
 // https://www.ecma-international.org/ecma-262/10.0/index.html#table-34
@@ -620,7 +621,9 @@ export class LuaPrinter {
     }
 
     public printStringLiteral(expression: lua.StringLiteral): SourceNode {
-        return this.createSourceNode(expression, escapeString(expression.value));
+        const text = encodeUTF8(escapeString(expression.value));
+        // console.log(encodeUTF8(expression.value), text, escapeString(expression.value));
+        return this.createSourceNode(expression, text);
     }
 
     public printNumericLiteral(expression: lua.NumericLiteral): SourceNode {

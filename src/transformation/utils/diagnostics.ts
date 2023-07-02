@@ -172,3 +172,7 @@ export const cannotAssignToNodeOfKind = createErrorDiagnosticFactory(
 export const incompleteFieldDecoratorWarning = createWarningDiagnosticFactory(
     "You are using a class field decorator, note that tstl ignores returned value initializers!"
 );
+
+export const unsupportedUnicodeEscape = createWarningDiagnosticFactory(
+    (target: LuaTarget) => `Lua ${target} doesn't support unicode escape sequences (\\uHHHH or \\u{HHH})`
+);

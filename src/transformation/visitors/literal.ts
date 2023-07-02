@@ -10,6 +10,7 @@ import { transformFunctionLikeDeclaration } from "./function";
 import { moveToPrecedingTemp, transformExpressionList } from "./expression-list";
 import { transformIdentifierWithSymbol } from "./identifier";
 import { LuaTarget } from "../../CompilerOptions";
+// import { transformEscapeSequences } from "./escape-sequences";
 
 // TODO: Move to object-literal.ts?
 export function transformPropertyName(context: TransformationContext, node: ts.PropertyName): lua.Expression {
@@ -187,6 +188,16 @@ const transformArrayLiteralExpression: FunctionVisitor<ts.ArrayLiteralExpression
     return lua.createTableExpression(values, expression);
 };
 
+// function transformStringLiteral(
+//     node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral,
+//     context: TransformationContext
+// ) {
+//     console.info(`Text: "${node.text.codePointAt(0)?.toString(16)}"`);
+//     console.info(`Length: "${node.text.length}"`);
+//     const text = transformEscapeSequences(node, context);
+//     return lua.createStringLiteral(text, node);
+// }
+
 function checkForUndefinedOrNullInArrayLiteral(array: ts.ArrayLiteralExpression, context: TransformationContext) {
     // Look for last non-nil element in literal
     let lastNonUndefinedIndex = array.elements.length - 1;
@@ -219,6 +230,8 @@ export const literalVisitors: Visitors = {
     [ts.SyntaxKind.NumericLiteral]: transformNumericLiteralExpression,
     [ts.SyntaxKind.StringLiteral]: node => lua.createStringLiteral(node.text, node),
     [ts.SyntaxKind.NoSubstitutionTemplateLiteral]: node => lua.createStringLiteral(node.text, node),
+    // [ts.SyntaxKind.StringLiteral]: transformStringLiteral,
+    // [ts.SyntaxKind.NoSubstitutionTemplateLiteral]: transformStringLiteral,
     [ts.SyntaxKind.ObjectLiteralExpression]: transformObjectLiteralExpression,
     [ts.SyntaxKind.ArrayLiteralExpression]: transformArrayLiteralExpression,
 };
